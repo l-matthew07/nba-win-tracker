@@ -11,8 +11,14 @@ from pymongo import MongoClient
 from datetime import datetime, date
 import string
 import pymongo
+import os
+from dotenv import load_dotenv
 
-client = MongoClient('mongodb+srv://limatthew68:qwzlQ43EfVLwHQ8x@nbastats.o0x4uyr.mongodb.net/NBASTATS?retryWrites=true&w=majority')
+load_dotenv()
+
+client = MongoClient(os.getenv("MONGODB_URI"))
+
+
 db = client["nba_stats"]
 
 teams_collection = db['teams']
