@@ -1,3 +1,12 @@
+'''
+shit to think about:
+    when comparing player to draft calss consider strength of draft class as well
+    come up with better model to project college performacne to league performance
+'''
+
+
+
+
 from flask import Flask, request, jsonify
 import requests
 from openai import OpenAI
@@ -10,6 +19,7 @@ import time
 from ratelimit import limits, sleep_and_retry
 from dotenv import load_dotenv
 import os
+from rag_system import NBARAGAgent
 
 
 app = Flask(__name__)
@@ -25,6 +35,10 @@ BASE_URL = "https://api.balldontlie.io/v1"
 team_cache = {}
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Initialize RAG Agent
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+rag_agent = NBARAGAgent(MONGODB_URI, OPENAI_API_KEY)
 
 REQUESTS_PER_MINUTE = 60  # Adjust as needed
 
@@ -210,6 +224,32 @@ def get_league_avg_wins(season):
         params['page'] += 1
 
     return sum(team_wins.values()) / len(team_wins) if team_wins else 0
+
+@app.route('/api/rag-analyze', methods=['POST'])
+def rag_analyze():
+    """RAG-powered NBA statistics analysis endpoint"""
+    try:
+        data = request.json
+        query = data.get('query', '')
+        
+        if not query:
+            return jsonify({"error": "Query is required"}), 400
+        
+        print(f"RAG Analysis query: {query}")
+        
+        # Initialize RAG agent if not already done
+        if not rag_agent.is_initialized:
+            print("Initializing RAG agent...")
+            rag_agent.initialize()
+        
+        # Perform RAG analysis
+        result = rag_agent.analyze(query)
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"RAG Analysis error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analyze-team-wins', methods=['POST'])
 def analyze_team_wins():

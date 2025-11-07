@@ -3,7 +3,6 @@ beautifulsoup4==4.14.2
 cloudscraper==1.2.71
 ConfigParser==7.2.0
 cryptography==46.0.3
-python-dotenv==1.0.0
 faiss-cpu
 fake_useragent==2.2.0
 filelock==3.20.0

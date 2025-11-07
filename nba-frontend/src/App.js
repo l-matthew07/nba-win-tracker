@@ -29,6 +29,10 @@ function App() {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('wins'); // 'wins' or 'rag'
+  const [ragResults, setRagResults] = useState(null);
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragError, setRagError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +46,21 @@ function App() {
       setError(err.response?.data?.error || 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRagSubmit = async (e) => {
+    e.preventDefault();
+    setRagLoading(true);
+    setRagError(null);
+    
+    try {
+      const response = await axios.post('http://localhost:8000/api/rag-analyze', { query });
+      setRagResults(response.data);
+    } catch (err) {
+      setRagError(err.response?.data?.error || 'An error occurred');
+    } finally {
+      setRagLoading(false);
     }
   };
 
@@ -130,23 +149,122 @@ function App() {
     return teamColors[teamName] || `#${Math.floor(Math.random()*16777215).toString(16)}`;
   };
 
+  const renderRagAnalysis = () => {
+    if (!ragResults) return null;
+    
+    return (
+      <div style={{ marginTop: 20 }}>
+        <h3>RAG Analysis Results</h3>
+        <div style={{ 
+          backgroundColor: '#f5f5f5', 
+          padding: 20, 
+          borderRadius: 8, 
+          marginBottom: 20,
+          whiteSpace: 'pre-wrap'
+        }}>
+          {ragResults.analysis}
+        </div>
+        
+        <h4>Sources Used ({ragResults.sources.length})</h4>
+        <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+          {ragResults.sources.map((source, index) => (
+            <div key={index} style={{ 
+              border: '1px solid #ddd', 
+              padding: 10, 
+              margin: '5px 0', 
+              borderRadius: 4,
+              backgroundColor: '#fafafa'
+            }}>
+              <strong>Source {index + 1}:</strong> {source.type} 
+              <span style={{ color: '#666', marginLeft: 10 }}>
+                (Relevance: {(source.relevance_score * 100).toFixed(1)}%)
+              </span>
+              <br />
+              <small style={{ color: '#888' }}>
+                ID: {source.id} | {source.metadata && Object.entries(source.metadata).map(([k, v]) => `${k}: ${v}`).join(', ')}
+              </small>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ maxWidth: 900, margin: 'auto', padding: 20 }}>
-      <h1>NBA Team Wins Analyzer</h1>
-      <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="Enter your query, e.g. 'Compare Lakers and Celtics 2018-2023'"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ width: '80%', padding: 8, fontSize: 16 }}
-        />
-        <button type="submit" disabled={loading} style={{ padding: '8px 16px', marginLeft: 10 }}>
-          {loading ? 'Loading...' : 'Analyze'}
+    <div style={{ maxWidth: 1200, margin: 'auto', padding: 20 }}>
+      <h1>NBA Statistics Analyzer</h1>
+      
+      {/* Tab Navigation */}
+      <div style={{ marginBottom: 20, borderBottom: '1px solid #ddd' }}>
+        <button
+          onClick={() => setActiveTab('wins')}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: activeTab === 'wins' ? '#007bff' : 'transparent',
+            color: activeTab === 'wins' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4
+          }}
+        >
+          Team Wins Analysis
         </button>
-      </form>
-      {error && <div style={{ color: 'red', marginBottom: 20 }}>{error}</div>}
-      {renderVisualization()}
+        <button
+          onClick={() => setActiveTab('rag')}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            backgroundColor: activeTab === 'rag' ? '#007bff' : 'transparent',
+            color: activeTab === 'rag' ? 'white' : '#333',
+            cursor: 'pointer',
+            borderTopLeftRadius: 4,
+            borderTopRightRadius: 4
+          }}
+        >
+          RAG Analysis
+        </button>
+      </div>
+
+      {/* Team Wins Analysis Tab */}
+      {activeTab === 'wins' && (
+        <div>
+          <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
+            <input
+              type="text"
+              placeholder="Enter your query, e.g. 'Compare Lakers and Celtics 2018-2023'"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ width: '80%', padding: 8, fontSize: 16 }}
+            />
+            <button type="submit" disabled={loading} style={{ padding: '8px 16px', marginLeft: 10 }}>
+              {loading ? 'Loading...' : 'Analyze'}
+            </button>
+          </form>
+          {error && <div style={{ color: 'red', marginBottom: 20 }}>{error}</div>}
+          {renderVisualization()}
+        </div>
+      )}
+
+      {/* RAG Analysis Tab */}
+      {activeTab === 'rag' && (
+        <div>
+          <form onSubmit={handleRagSubmit} style={{ marginBottom: 20 }}>
+            <input
+              type="text"
+              placeholder="Ask any NBA question, e.g. 'Who are the top 5 players with most championships?'"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ width: '80%', padding: 8, fontSize: 16 }}
+            />
+            <button type="submit" disabled={ragLoading} style={{ padding: '8px 16px', marginLeft: 10 }}>
+              {ragLoading ? 'Analyzing...' : 'Ask RAG'}
+            </button>
+          </form>
+          {ragError && <div style={{ color: 'red', marginBottom: 20 }}>{ragError}</div>}
+          {renderRagAnalysis()}
+        </div>
+      )}
     </div>
   );
 }
